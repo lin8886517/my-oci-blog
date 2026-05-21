@@ -7,12 +7,17 @@ import { getAllPosts } from "@/lib/api";
 export default async function Index() {
   const rawPosts = await getAllPosts();
 
-  // 把扁平字段转成组件期望的格式
-  const allPosts = rawPosts.map(p => ({
+  const allPosts = rawPosts.map((p) => ({
     ...p,
     coverImage: p.cover_image,
     date: p.date_posted,
-    author: { name: p.author_name, picture: p.author_picture },
+    author: {
+      name: p.author_name,
+      picture: p.author_picture,
+    },
+    ogImage: {
+      url: p.cover_image,
+    },
   }));
 
   const heroPost = allPosts[0];
@@ -25,7 +30,7 @@ export default async function Index() {
         {heroPost && (
           <HeroPost
             title={heroPost.title}
-            coverImage={heroPost.coverImage}
+            coverImage={`/api/object/${heroPost.coverImage}`}
             date={heroPost.date}
             author={heroPost.author}
             slug={heroPost.slug}
