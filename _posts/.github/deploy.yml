@@ -1,0 +1,47 @@
+name: Deploy to OCI VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy on OCI via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            cd ${{ secrets.APP_DIR }}
+
+            echo "==> Current directory"
+            pwd
+
+            echo "==> Sync with GitHub"
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "==> Install dependencies"
+            npm ci
+
+            echo "==> Build Next.js app"
+            npm run build
+
+            echo "==> Restart app with PM2"
+            if pm2 describe myblog > /dev/null; then
+              pm2 restart myblog
+            else
+              pm2 start npm --name myblog -- start -- --port 3000
+            fi
+
+            echo "==> Save PM2 process list"
+            pm2 save
+
+            echo "==> Deployment finished"
