@@ -11,7 +11,7 @@ const client = new os.ObjectStorageClient({
   authenticationDetailsProvider: provider,
 });
 
-const namespace = "iddukkrtuh3l";
+const namespace = "OCInamespace";
 const bucketName = "my-oci-blog-assets";
 
 const content = Buffer.from("hello from my oci blog");

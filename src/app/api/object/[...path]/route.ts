@@ -1,20 +1,7 @@
 import { NextResponse } from "next/server";
-import common from "oci-common";
-import os from "oci-objectstorage";
+import { getBucketName, getNamespaceName, getObjectStorageClient } from "@/lib/oci";
 
 export const runtime = "nodejs";
-
-const provider = new common.ConfigFileAuthenticationDetailsProvider(
-  "C:\\Users\\linli\\.oci\\config",
-  "DEFAULT"
-);
-
-const client = new os.ObjectStorageClient({
-  authenticationDetailsProvider: provider,
-});
-
-const namespaceName = "iddukkrtuh3l";
-const bucketName = "my-oci-blog-assets";
 
 type RouteContext = {
   params: Promise<{
@@ -26,6 +13,10 @@ export async function GET(_req: Request, context: RouteContext) {
   try {
     const { path } = await context.params;
     const objectName = path.join("/");
+
+    const client = getObjectStorageClient();
+    const namespaceName = getNamespaceName();
+    const bucketName = getBucketName();
 
     const response = await client.getObject({
       namespaceName,

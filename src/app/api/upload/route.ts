@@ -1,21 +1,8 @@
 import { NextResponse } from "next/server";
-import common from "oci-common";
-import os from "oci-objectstorage";
 import path from "path";
+import { getBucketName, getNamespaceName, getObjectStorageClient } from "@/lib/oci";
 
 export const runtime = "nodejs";
-
-const provider = new common.ConfigFileAuthenticationDetailsProvider(
-  "C:\\Users\\linli\\.oci\\config",
-  "DEFAULT"
-);
-
-const client = new os.ObjectStorageClient({
-  authenticationDetailsProvider: provider,
-});
-
-const namespaceName = "iddukkrtuh3l";
-const bucketName = "my-oci-blog-assets";
 
 export async function POST(req: Request) {
   try {
@@ -32,6 +19,10 @@ export async function POST(req: Request) {
     const ext = path.extname(file.name) || ".bin";
     const safeBase = path.basename(file.name, ext).replace(/[^a-zA-Z0-9-_]/g, "-");
     const objectName = `uploads/${Date.now()}-${safeBase}${ext}`;
+
+    const client = getObjectStorageClient();
+    const namespaceName = getNamespaceName();
+    const bucketName = getBucketName();
 
     await client.putObject({
       namespaceName,
