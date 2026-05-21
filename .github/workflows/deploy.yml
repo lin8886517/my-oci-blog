@@ -28,6 +28,22 @@ jobs:
             git fetch origin
             git reset --hard origin/main
 
+            echo "==> Write production env"
+            cat > .env.production <<EOF
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_CONNECTION_STRING=${{ secrets.DB_CONNECTION_STRING }}
+            DB_WALLET_LOCATION=${{ secrets.DB_WALLET_LOCATION }}
+            DB_WALLET_PASSWORD=${{ secrets.DB_WALLET_PASSWORD }}
+            OCI_TENANCY_ID=${{ secrets.OCI_TENANCY_ID }}
+            OCI_USER_ID=${{ secrets.OCI_USER_ID }}
+            OCI_FINGERPRINT=${{ secrets.OCI_FINGERPRINT }}
+            OCI_PRIVATE_KEY=${{ secrets.OCI_PRIVATE_KEY }}
+            OCI_REGION=${{ secrets.OCI_REGION }}
+            OCI_NAMESPACE=${{ secrets.OCI_NAMESPACE }}
+            OCI_BUCKET_NAME=${{ secrets.OCI_BUCKET_NAME }}
+            EOF
+
             echo "==> Install dependencies"
             npm ci
 
@@ -36,7 +52,7 @@ jobs:
 
             echo "==> Restart app with PM2"
             if pm2 describe myblog > /dev/null; then
-              pm2 restart myblog
+              pm2 restart myblog --update-env
             else
               pm2 start npm --name myblog -- start -- --port 3000
             fi

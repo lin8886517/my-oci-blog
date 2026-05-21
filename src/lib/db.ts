@@ -1,21 +1,30 @@
-import oracledb from 'oracledb';
-import path from 'path';
+import oracledb from "oracledb";
+import path from "path";
 
-// 全局设置：CLOB 字段自动转 string
 oracledb.fetchAsString = [oracledb.CLOB];
 
 let pool: oracledb.Pool | null = null;
 
+function getRequiredEnv(name: string) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing environment variable: ${name}`);
+  }
+  return value;
+}
+
 export async function getPool(): Promise<oracledb.Pool> {
   if (pool) return pool;
 
+  const walletLocation = getRequiredEnv("DB_WALLET_LOCATION");
+
   pool = await oracledb.createPool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    connectionString: process.env.DB_CONNECTION_STRING,
-    walletLocation: path.resolve(process.env.DB_WALLET_LOCATION!),    
-    walletPassword: process.env.DB_WALLET_PASSWORD,
-    configDir: path.resolve(process.env.DB_WALLET_LOCATION!),
+    user: getRequiredEnv("DB_USER"),
+    password: getRequiredEnv("DB_PASSWORD"),
+    connectionString: getRequiredEnv("DB_CONNECTION_STRING"),
+    walletLocation: path.resolve(walletLocation),
+    walletPassword: getRequiredEnv("DB_WALLET_PASSWORD"),
+    configDir: path.resolve(walletLocation),
     poolMin: 1,
     poolMax: 5,
     poolIncrement: 1,
