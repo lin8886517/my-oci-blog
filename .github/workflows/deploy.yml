@@ -3,14 +3,74 @@ name: Deploy to OCI VM
 on:
   push:
     branches:
-      - main
+      - dev          # dev push → auto deploy to VM2
+  workflow_dispatch:  # manual trigger → deploy to VM1 (main)
 
 jobs:
-  deploy:
+  # ─────────────────────────────────────────
+  # JOB 1: dev push → auto deploy to VM2
+  # ─────────────────────────────────────────
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy on OCI via SSH
+      - name: Deploy to VM2 (dev)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM2_HOST }}
+          username: ${{ secrets.VM2_USERNAME }}
+          key: ${{ secrets.VM2_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            cd ${{ secrets.VM2_APP_DIR }}
+
+            echo "==> Sync with GitHub (dev)"
+            git fetch origin
+            git reset --hard origin/dev
+
+            echo "==> Write dev env"
+            cat > .env.production <<EOF
+            DB_USER="${{ secrets.VM2_DB_USER }}"
+            DB_PASSWORD="${{ secrets.VM2_DB_PASSWORD }}"
+            DB_CONNECTION_STRING="${{ secrets.VM2_DB_CONNECTION_STRING }}"
+            DB_WALLET_LOCATION="${{ secrets.VM2_DB_WALLET_LOCATION }}"
+            DB_WALLET_PASSWORD="${{ secrets.VM2_DB_WALLET_PASSWORD }}"
+            OCI_TENANCY_ID="${{ secrets.OCI_TENANCY_ID }}"
+            OCI_USER_ID="${{ secrets.OCI_USER_ID }}"
+            OCI_FINGERPRINT="${{ secrets.OCI_FINGERPRINT }}"
+            OCI_PRIVATE_KEY="${{ secrets.OCI_PRIVATE_KEY }}"
+            OCI_REGION="${{ secrets.OCI_REGION }}"
+            OCI_NAMESPACE="${{ secrets.OCI_NAMESPACE }}"
+            OCI_BUCKET_NAME="${{ secrets.VM2_OCI_BUCKET_NAME }}"
+            EOF
+
+            echo "==> Install dependencies"
+            npm ci
+
+            echo "==> Build Next.js app"
+            npm run build
+
+            echo "==> Restart app with PM2"
+            if pm2 describe myblog > /dev/null 2>&1; then
+              pm2 restart myblog --update-env
+            else
+              pm2 start npm --name myblog -- start -- --port 3000
+            fi
+
+            pm2 save
+            echo "==> VM2 Deployment finished"
+
+  # ─────────────────────────────────────────
+  # JOB 2: manual trigger → deploy to VM1 (production)
+  # ─────────────────────────────────────────
+  deploy-prod:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VM1 (production)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.HOST }}
@@ -21,10 +81,7 @@ jobs:
 
             cd ${{ secrets.APP_DIR }}
 
-            echo "==> Current directory"
-            pwd
-
-            echo "==> Sync with GitHub"
+            echo "==> Sync with GitHub (main)"
             git fetch origin
             git reset --hard origin/main
 
@@ -51,13 +108,11 @@ jobs:
             npm run build
 
             echo "==> Restart app with PM2"
-            if pm2 describe myblog > /dev/null; then
+            if pm2 describe myblog > /dev/null 2>&1; then
               pm2 restart myblog --update-env
             else
               pm2 start npm --name myblog -- start -- --port 3000
             fi
 
-            echo "==> Save PM2 process list"
             pm2 save
-
-            echo "==> Deployment finished"
+            echo "==> VM1 Deployment finished"
